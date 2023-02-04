@@ -1,49 +1,15 @@
-# Usage: rpmbuild --define '_custom_ver <your own incremental version>' \
-#        [--define '_prefix <your own package prefix>'] \
-#        [--define 'BUILD_KERNEL <target kernel release including platform>'] \
-#        [--define 'ICE_VERSION <Intel''s ice package version>'] \
-#        [--define 'AUX_VERSION <Intel''s internal version for auxiary bus>'] \
-#        -ba SPECS/ice_imp.spec
-
-#%%define _prefix tm
-%define vendor_name ice
-%if 0%{?ICE_VERSION:1}
-%define ice_ver %{ICE_VERSION}
-%else
-%define ice_ver 1.10.1.2.2
-%endif
-%if 0%{?_prefix:1}
-Name: %{_prefix}-%{vendor_name}
-%else
-Name: %{vendor_name}
-%endif
+Name: ice
 Summary: Intel(R) Ethernet Connection E800 Series Linux Driver
-#%%define _custom_ver 1.0
-%if 0%{?_custom_ver:1}
-Version: %{ice_ver}_%{_custom_ver}
-%else
-cat <<EOM
-ERROR: Monotonously increasing <_custom_ver> is required.
-
-Usage: rpmbuild --define '_custom_ver <your own incremental version>' \
-       [--define '_prefix <your own package prefix>'] \
-       [--define 'BUILD_KERNEL <target kernel release including platform>'] \
-       [--define 'ICE_VERSION <Intel''s ice package version>'] \
-       [--define 'AUX_VERSION <Intel''s internal version for auxiary bus>'] \
-       -ba SPECS/ice_imp.spec
-EOM
-exit 1
-%endif
+Version: 1.10.1.2.2
 Release: 1
-Source: %{vendor_name}-%{ice_ver}.tar.gz
+Source: %{name}-%{version}.tar.gz
 Vendor: Intel Corporation
-Packager: Threatmetrix, Inc., a LexisNexisRisk company (yuan.liu@lexisnexisrisk.com)
-License: GPLv2 and Redistributable
+License: GPLv2 and Redistributable, no modification permitted
 ExclusiveOS: linux
 Group: System Environment/Kernel
 Provides: %{name}
 URL: http://support.intel.com
-BuildRoot: %{_tmppath}/%{name}-%{ice_ver}-root
+BuildRoot: %{_tmppath}/%{name}-%{version}-root
 %global debug_package %{nil}
 # macros for finding system files to update at install time (pci.ids, pcitable)
 %define find() %(for f in %*; do if [ -e $f ]; then echo $f; break; fi; done)
@@ -51,6 +17,7 @@ BuildRoot: %{_tmppath}/%{name}-%{ice_ver}-root
 %define _pcitable /usr/share/kudzu/pcitable /usr/share/hwdata/pcitable /dev/null
 %define pciids    %find %{_pciids}
 %define pcitable  %find %{_pcitable}
+Requires: kernel, findutils, gawk, bash
 
 %if 0%{?BUILD_KERNEL:1}
 %define kernel_ver %{BUILD_KERNEL}
@@ -58,8 +25,6 @@ BuildRoot: %{_tmppath}/%{name}-%{ice_ver}-root
 %else
 %define kernel_ver %(uname -r)
 %endif
-%define kernel_rel %(sed 's/\.[^\.]*$//' <<<%{kernel_ver})
-Requires: kernel = %{kernel_rel}, findutils, gawk, bash
 
 %if 0%{?KSRC:1}
 %define check_aux_args_ksrc -k %{KSRC}
@@ -72,35 +37,21 @@ Requires: kernel = %{kernel_rel}, findutils, gawk, bash
                   (rpm -q --whatprovides /lib/modules/%kernel_ver/build/include/linux/auxiliary_bus.h > /dev/null 2>&1 && echo 0 || echo 2) )
 
 %if (%need_aux_rpm == 2)
-%define aux_name intel_auxiliary
-%if 0%{?AUX_VERSION:1}
-%define aux_ver %{AUX_VERSION}
-%else
-%define aux_ver 1.0.0
-%endif
-%if 0%{?_prefix:1}
-%define aux_pkg %{_prefix}-%{aux_name}
-%else
-%define aux_pkg %{aux_name}
-%endif
-%define _aux_custom_ver %{aux_ver}_%{_custom_ver}
-Requires: %{aux_pkg} == %{_aux_custom_ver}
+Requires: intel_auxiliary
 %endif
 
 # Check for existence of %kernel_module_package_buildreqs ...
 %if 0%{?!kernel_module_package_buildreqs:1}
 # ... and provide a suitable definition if it is not defined
-%define kernel_module_package_buildreqs kernel-devel = %{kernel_rel}
+%define kernel_module_package_buildreqs kernel-devel
 %endif
 
 BuildRequires: %kernel_module_package_buildreqs
 
 %description
-This package contains the Intel(R) Ethernet Connection E800 Series Linux Driver for kernel %{kernel_ver}.
+This package contains the Intel(R) Ethernet Connection E800 Series Linux Driver.
 
 %prep
-%setup -n %{vendor_name}-%{ice_ver}
-ln -s %{vendor_name}-%{ice_ver} ../%{name}-%{version}
 %setup
 
 %build
@@ -108,7 +59,7 @@ make -C src clean
 make -C src
 
 %install
-%define req_aux %( [[ "%{vendor_name}" =~ ^(ice|ice_sw|ice_swx|iavf|i40e)$ ]] && echo 0 || echo 1 )
+%define req_aux %( [[ "%name" =~ ^(ice|ice_sw|ice_swx|iavf|i40e)$ ]] && echo 0 || echo 1 )
 
 # install drivers that have auxiliary driver dependency
 %if (%req_aux == 0)
@@ -435,12 +386,11 @@ if [ "%{pcitable}" != "/dev/null" ]; then
 	mv -f $LD/pcitable.new %{pcitable}
 fi
 
-echo "Updating modules.dep for %{kernel_ver}..."
-uname -r | grep BOOT || /sbin/depmod %{kernel_ver} -a > /dev/null 2>&1 || true
+uname -r | grep BOOT || /sbin/depmod -a > /dev/null 2>&1 || true
 
 if which dracut >/dev/null 2>&1; then
-	echo "Updating initramfs-%{kernel_ver} with dracut..."
-	if dracut --force --kver %{kernel_ver}; then
+	echo "Updating initramfs with dracut..."
+	if dracut --force ; then
 		echo "Successfully updated initramfs."
 	else
 		echo "Failed to update initramfs."
@@ -448,8 +398,8 @@ if which dracut >/dev/null 2>&1; then
 		exit -1
 	fi
 elif which mkinitrd >/dev/null 2>&1; then
-	echo "Updating initrd-%{kernel_ver} with mkinitrd..."
-	if mkinitrd --image-version %{kernel_ver}; then
+	echo "Updating initrd with mkinitrd..."
+	if mkinitrd; then
 		echo "Successfully updated initrd."
 	else
 		echo "Failed to update initrd."
@@ -457,7 +407,7 @@ elif which mkinitrd >/dev/null 2>&1; then
 		exit -1
 	fi
 else
-	echo "Unable to determine utility to update initrd image for %{kernel_ver}."
+	echo "Unable to determine utility to update initrd image."
 	echo "You must update your initrd manually for changes to take place."
 	exit -1
 fi
@@ -466,12 +416,11 @@ fi
 rm -rf /usr/local/share/%{name}
 
 %postun
-echo "Update modules.dep for %{kernel_ver}..."
-uname -r | grep BOOT || /sbin/depmod -a %{kernel_ver} > /dev/null 2>&1 || true
+uname -r | grep BOOT || /sbin/depmod -a > /dev/null 2>&1 || true
 
 if which dracut >/dev/null 2>&1; then
-	echo "Updating initramfs-%{kernel_ver} with dracut..."
-	if dracut --force --kver %{kernel_ver}; then
+	echo "Updating initramfs with dracut..."
+	if dracut --force ; then
 		echo "Successfully updated initramfs."
 	else
 		echo "Failed to update initramfs."
@@ -479,8 +428,8 @@ if which dracut >/dev/null 2>&1; then
 		exit -1
 	fi
 elif which mkinitrd >/dev/null 2>&1; then
-	echo "Updating initrd-%{kernel_ver} with mkinitrd..."
-	if mkinitrd --image-version %{kernel_ver}; then
+	echo "Updating initrd with mkinitrd..."
+	if mkinitrd; then
 		echo "Successfully updated initrd."
 	else
 		echo "Failed to update initrd."
@@ -488,23 +437,22 @@ elif which mkinitrd >/dev/null 2>&1; then
 		exit -1
 	fi
 else
-	echo "Unable to determine utility to update initrd image for %{kernel_ver}."
+	echo "Unable to determine utility to update initrd image."
 	echo "You must update your initrd manually for changes to take place."
 	exit -1
 fi
 
 %if (%need_aux_rpm == 2) && (%req_aux == 0)
-%package -n %{aux_pkg}
+%package -n intel_auxiliary
 Summary: Auxiliary bus driver (backport)
-Version: %{_aux_custom_ver}
-Requires: kernel-devel = %{kernel_rel}
+Version: 1.0.0
 
-%description -n %{aux_pkg}
-The Auxiliary bus driver (intel_auxiliary.ko), backported from upstream, for use with kernel %{kernel_ver} which doesn't have auxiliary bus.
+%description -n intel_auxiliary
+The Auxiliary bus driver (intel_auxiliary.ko), backported from upstream, for use by kernels that don't have auxiliary bus.
 
 # The if is used to hide this whole section. This causes RPM to skip the build
 # of the auxiliary subproject entirely.
-%files -n %{aux_pkg} -f aux.list
+%files -n intel_auxiliary -f aux.list
 %doc aux.list
 %endif
 
