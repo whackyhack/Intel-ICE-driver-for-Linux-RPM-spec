@@ -1,26 +1,15 @@
-# Usage: rpmbuild [--define '_prefix <your prefix>'] --define '_custom_ver 0.1'
-
-#%%define _prefix tm
-%define vendor_name ice
-%define ice_ver 1.10.1.2.2
-%if 0%{?_prefix:1}
-Name: %{_prefix}-%{vendor_name}
-%else
-Name: %{vendor_name}
-%endif
+Name: ice
 Summary: Intel(R) Ethernet Connection E800 Series Linux Driver
-#%%define _custom_ver 0.1
-Version: %{ice_ver}_%{_custom_ver}
+Version: 1.10.1.2.2
 Release: 1
-Source: %{vendor_name}-%{ice_ver}.tar.gz
+Source: %{name}-%{version}.tar.gz
 Vendor: Intel Corporation
-Packager: Threatmetrix, Inc., a LexisNexisRisk company (yuan.liu@lexisnexisrisk.com)
 License: GPLv2 and Redistributable, no modification permitted
 ExclusiveOS: linux
 Group: System Environment/Kernel
 Provides: %{name}
 URL: http://support.intel.com
-BuildRoot: %{_tmppath}/%{name}-%{ice_ver}-root
+BuildRoot: %{_tmppath}/%{name}-%{version}-root
 %global debug_package %{nil}
 # macros for finding system files to update at install time (pci.ids, pcitable)
 %define find() %(for f in %*; do if [ -e $f ]; then echo $f; break; fi; done)
@@ -48,15 +37,7 @@ Requires: kernel, findutils, gawk, bash
                   (rpm -q --whatprovides /lib/modules/%kernel_ver/build/include/linux/auxiliary_bus.h > /dev/null 2>&1 && echo 0 || echo 2) )
 
 %if (%need_aux_rpm == 2)
-%define aux_name intel_auxiliary
-%define aux_ver 1.0.0
-%if 0%{?_prefix:1}
-%define aux_pkg %{_prefix}-%{aux_name}
-%else
-%define aux_pkg %{aux_name}
-%endif
-%define _aux_custom_ver %{aux_ver}_%{_custom_ver}
-Requires: %{aux_pkg} == %{_aux_custom_ver}
+Requires: intel_auxiliary
 %endif
 
 # Check for existence of %kernel_module_package_buildreqs ...
@@ -71,8 +52,6 @@ BuildRequires: %kernel_module_package_buildreqs
 This package contains the Intel(R) Ethernet Connection E800 Series Linux Driver.
 
 %prep
-%setup -n %{vendor_name}-%{ice_ver}
-ln -s %{vendor_name}-%{ice_ver} ../%{name}-%{version}
 %setup
 
 %build
@@ -80,7 +59,7 @@ make -C src clean
 make -C src
 
 %install
-%define req_aux %( [[ "%{vendor_name}" =~ ^(ice|ice_sw|ice_swx|iavf|i40e)$ ]] && echo 0 || echo 1 )
+%define req_aux %( [[ "%name" =~ ^(ice|ice_sw|ice_swx|iavf|i40e)$ ]] && echo 0 || echo 1 )
 
 # install drivers that have auxiliary driver dependency
 %if (%req_aux == 0)
@@ -464,16 +443,16 @@ else
 fi
 
 %if (%need_aux_rpm == 2) && (%req_aux == 0)
-%package -n %{aux_pkg}
+%package -n intel_auxiliary
 Summary: Auxiliary bus driver (backport)
-Version: %{_aux_custom_ver}
+Version: 1.0.0
 
 %description -n intel_auxiliary
 The Auxiliary bus driver (intel_auxiliary.ko), backported from upstream, for use by kernels that don't have auxiliary bus.
 
 # The if is used to hide this whole section. This causes RPM to skip the build
 # of the auxiliary subproject entirely.
-%files -n %{aux_pkg} -f aux.list
+%files -n intel_auxiliary -f aux.list
 %doc aux.list
 %endif
 
