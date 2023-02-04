@@ -1,4 +1,6 @@
-# Usage: rpmbuild [--define '_prefix <your prefix>'] --define '_custom_ver 0.1'
+# Usage: rpmbuild [--define '_prefix <your prefix>'] \
+#        --define 'BUILD_KERNEL <target kernel release including platform>' \
+#        --define '_custom_ver 0.1'
 
 #%%define _prefix tm
 %define vendor_name ice
@@ -68,7 +70,7 @@ Requires: %{aux_pkg} == %{_aux_custom_ver}
 BuildRequires: %kernel_module_package_buildreqs
 
 %description
-This package contains the Intel(R) Ethernet Connection E800 Series Linux Driver.
+This package contains the Intel(R) Ethernet Connection E800 Series Linux Driver for kernel %{kernel_ver}.
 
 %prep
 %setup -n %{vendor_name}-%{ice_ver}
@@ -407,11 +409,12 @@ if [ "%{pcitable}" != "/dev/null" ]; then
 	mv -f $LD/pcitable.new %{pcitable}
 fi
 
-uname -r | grep BOOT || /sbin/depmod -a > /dev/null 2>&1 || true
+echo "Updating modules.dep for %{kernel_ver}..."
+uname -r | grep BOOT || /sbin/depmod %{kernel_ver} -a > /dev/null 2>&1 || true
 
 if which dracut >/dev/null 2>&1; then
-	echo "Updating initramfs with dracut..."
-	if dracut --force ; then
+	echo "Updating initramfs-%{kernel_ver} with dracut..."
+	if dracut --force --kver %{kernel_ver}; then
 		echo "Successfully updated initramfs."
 	else
 		echo "Failed to update initramfs."
@@ -419,8 +422,8 @@ if which dracut >/dev/null 2>&1; then
 		exit -1
 	fi
 elif which mkinitrd >/dev/null 2>&1; then
-	echo "Updating initrd with mkinitrd..."
-	if mkinitrd; then
+	echo "Updating initrd-%{kernel_ver} with mkinitrd..."
+	if mkinitrd --image-version %{kernel_ver}; then
 		echo "Successfully updated initrd."
 	else
 		echo "Failed to update initrd."
@@ -428,7 +431,7 @@ elif which mkinitrd >/dev/null 2>&1; then
 		exit -1
 	fi
 else
-	echo "Unable to determine utility to update initrd image."
+	echo "Unable to determine utility to update initrd image for %{kernel_ver}."
 	echo "You must update your initrd manually for changes to take place."
 	exit -1
 fi
@@ -437,11 +440,12 @@ fi
 rm -rf /usr/local/share/%{name}
 
 %postun
-uname -r | grep BOOT || /sbin/depmod -a > /dev/null 2>&1 || true
+echo "Update modules.dep for %{kernel_ver}..."
+uname -r | grep BOOT || /sbin/depmod -a %{kernel_ver} > /dev/null 2>&1 || true
 
 if which dracut >/dev/null 2>&1; then
-	echo "Updating initramfs with dracut..."
-	if dracut --force ; then
+	echo "Updating initramfs-%{kernel_ver} with dracut..."
+	if dracut --force --kver %{kernel_ver}; then
 		echo "Successfully updated initramfs."
 	else
 		echo "Failed to update initramfs."
@@ -449,8 +453,8 @@ if which dracut >/dev/null 2>&1; then
 		exit -1
 	fi
 elif which mkinitrd >/dev/null 2>&1; then
-	echo "Updating initrd with mkinitrd..."
-	if mkinitrd; then
+	echo "Updating initrd-%{kernel_ver} with mkinitrd..."
+	if mkinitrd --image-version %{kernel_ver}; then
 		echo "Successfully updated initrd."
 	else
 		echo "Failed to update initrd."
@@ -458,7 +462,7 @@ elif which mkinitrd >/dev/null 2>&1; then
 		exit -1
 	fi
 else
-	echo "Unable to determine utility to update initrd image."
+	echo "Unable to determine utility to update initrd image for %{kernel_ver}."
 	echo "You must update your initrd manually for changes to take place."
 	exit -1
 fi
@@ -468,8 +472,8 @@ fi
 Summary: Auxiliary bus driver (backport)
 Version: %{_aux_custom_ver}
 
-%description -n intel_auxiliary
-The Auxiliary bus driver (intel_auxiliary.ko), backported from upstream, for use by kernels that don't have auxiliary bus.
+%description -n %{aux_pkg}
+The Auxiliary bus driver (intel_auxiliary.ko), backported from upstream, for use with kernel %{kernel_ver} which doen't have auxiliary bus.
 
 # The if is used to hide this whole section. This causes RPM to skip the build
 # of the auxiliary subproject entirely.
