@@ -1,10 +1,16 @@
 # Usage: rpmbuild [--define '_prefix <your prefix>'] \
 #        --define 'BUILD_KERNEL <target kernel release including platform>' \
+#        [--define 'ICE_VERSION <Intel''s ice package version>'] \
+#        [--define 'AUX_VERSION <Intel''s internal version for auxiary bus>'] \
 #        --define '_custom_ver 0.1'
 
 #%%define _prefix tm
 %define vendor_name ice
+%if 0%{?ICE_VERSION:1}
+%define ice_ver %{ICE_VERSION}
+%else
 %define ice_ver 1.10.1.2.2
+%endif
 %if 0%{?_prefix:1}
 Name: %{_prefix}-%{vendor_name}
 %else
@@ -52,7 +58,11 @@ Requires: kernel = %{kernel_rel}, findutils, gawk, bash
 
 %if (%need_aux_rpm == 2)
 %define aux_name intel_auxiliary
+%if 0%{?AUX_VERSION:1}
+%define aux_ver %{AUX_VERSION}
+%else
 %define aux_ver 1.0.0
+%endif
 %if 0%{?_prefix:1}
 %define aux_pkg %{_prefix}-%{aux_name}
 %else
