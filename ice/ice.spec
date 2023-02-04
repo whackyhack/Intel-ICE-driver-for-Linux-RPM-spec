@@ -30,7 +30,6 @@ BuildRoot: %{_tmppath}/%{name}-%{ice_ver}-root
 %define _pcitable /usr/share/kudzu/pcitable /usr/share/hwdata/pcitable /dev/null
 %define pciids    %find %{_pciids}
 %define pcitable  %find %{_pcitable}
-Requires: kernel, findutils, gawk, bash
 
 %if 0%{?BUILD_KERNEL:1}
 %define kernel_ver %{BUILD_KERNEL}
@@ -38,6 +37,8 @@ Requires: kernel, findutils, gawk, bash
 %else
 %define kernel_ver %(uname -r)
 %endif
+%define kernel_rel %(sed 's/\.[^\.]*$//' <<<%{kernel_ver})
+Requires: kernel = %{kernel_rel}, findutils, gawk, bash
 
 %if 0%{?KSRC:1}
 %define check_aux_args_ksrc -k %{KSRC}
@@ -64,7 +65,7 @@ Requires: %{aux_pkg} == %{_aux_custom_ver}
 # Check for existence of %kernel_module_package_buildreqs ...
 %if 0%{?!kernel_module_package_buildreqs:1}
 # ... and provide a suitable definition if it is not defined
-%define kernel_module_package_buildreqs kernel-devel
+%define kernel_module_package_buildreqs kernel-devel = %{kernel_rel}
 %endif
 
 BuildRequires: %kernel_module_package_buildreqs
@@ -471,9 +472,10 @@ fi
 %package -n %{aux_pkg}
 Summary: Auxiliary bus driver (backport)
 Version: %{_aux_custom_ver}
+Requires: kernel-devel = %{kernel_rel}
 
 %description -n %{aux_pkg}
-The Auxiliary bus driver (intel_auxiliary.ko), backported from upstream, for use with kernel %{kernel_ver} which doen't have auxiliary bus.
+The Auxiliary bus driver (intel_auxiliary.ko), backported from upstream, for use with kernel %{kernel_ver} which doesn't have auxiliary bus.
 
 # The if is used to hide this whole section. This causes RPM to skip the build
 # of the auxiliary subproject entirely.
