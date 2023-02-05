@@ -101,7 +101,6 @@ This package contains the Intel(R) Ethernet Connection E800 Series Linux Driver 
 %prep
 %setup -n %{vendor_name}-%{ice_ver}
 ln -s %{vendor_name}-%{ice_ver} ../%{name}-%{version}
-%setup
 
 %build
 make -C src clean
