@@ -84,7 +84,7 @@ Requires: kernel = %{kernel_rel}, findutils, gawk, bash
 %define aux_pkg %{aux_name}
 %endif
 %define _aux_custom_ver %{aux_ver}_%{_custom_ver}
-Requires: %{aux_pkg} == %{_aux_custom_ver}
+Requires: %{aux_pkg} = %{_aux_custom_ver}
 %endif
 
 # Check for existence of %kernel_module_package_buildreqs ...
@@ -93,6 +93,7 @@ Requires: %{aux_pkg} == %{_aux_custom_ver}
 %define kernel_module_package_buildreqs kernel-devel = %{kernel_rel}
 %endif
 
+BuildRequires: make, gcc
 BuildRequires: %kernel_module_package_buildreqs
 
 %description
