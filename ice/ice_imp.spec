@@ -1,19 +1,14 @@
-# Usage: rpmbuild --define '_custom_ver <your own incremental version>' \
-#        [--define '_prefix <your own package prefix>'] \
-#        [--define 'BUILD_KERNEL <target kernel release including platform>'] \
-#        [--define 'ICE_VERSION <Intel''s ice package version>'] \
-#        [--define 'AUX_VERSION <Intel''s internal version for auxiary bus>'] \
-#        -ba SPECS/ice_imp.spec
 
-#%%define _prefix tm
 %define vendor_name ice
 %if 0%{?ICE_VERSION:1}
 %define ice_ver %{ICE_VERSION}
 %else
 %define ice_ver 1.10.1.2.2
 %endif
-%if 0%{?_prefix:1}
-Name: %{_prefix}-%{vendor_name}
+
+#%%define _custom_pref tm
+%if 0%{?_custom_pref:1}
+Name: %{_custom_pref}-%{vendor_name}
 %else
 Name: %{vendor_name}
 %endif
@@ -22,22 +17,26 @@ Summary: Intel(R) Ethernet Connection E800 Series Linux Driver
 %if 0%{?_custom_ver:1}
 Version: %{ice_ver}_%{_custom_ver}
 %else
-cat <<EOM
-ERROR: Monotonously increasing <_custom_ver> is required.
+%{echo:ERROR: Monotonously increasing <_custom_ver> is required.
 
 Usage: rpmbuild --define '_custom_ver <your own incremental version>' \
-       [--define '_prefix <your own package prefix>'] \
+       [--define '_custom_pref <your own package prefix>'] \
+       [--define 'PACKAGER <your name> (<your E-mail)'] \
        [--define 'BUILD_KERNEL <target kernel release including platform>'] \
        [--define 'ICE_VERSION <Intel''s ice package version>'] \
        [--define 'AUX_VERSION <Intel''s internal version for auxiary bus>'] \
        -ba SPECS/ice_imp.spec
-EOM
-exit 1
+}
 %endif
 Release: 1
 Source: %{vendor_name}-%{ice_ver}.tar.gz
 Vendor: Intel Corporation
-Packager: Threatmetrix, Inc., a LexisNexisRisk company (yuan.liu@lexisnexisrisk.com)
+# Packager: Threatmetrix, Inc., a LexisNexisRisk company (yuan.liu@lexisnexisrisk.com)
+%if 0%{?PACKAGER:1}
+Packager: %{PACKAGER}
+%else
+%{error:Add --define 'PACKAGER <your name> (<your E-mail>)'}
+%endif
 License: GPLv2 and Redistributable
 ExclusiveOS: linux
 Group: System Environment/Kernel
@@ -78,8 +77,8 @@ Requires: kernel = %{kernel_rel}, findutils, gawk, bash
 %else
 %define aux_ver 1.0.0
 %endif
-%if 0%{?_prefix:1}
-%define aux_pkg %{_prefix}-%{aux_name}
+%if 0%{?_custom_pref:1}
+%define aux_pkg %{_custom_pref}-%{aux_name}
 %else
 %define aux_pkg %{aux_name}
 %endif
@@ -507,4 +506,3 @@ The Auxiliary bus driver (intel_auxiliary.ko), backported from upstream, for use
 %files -n %{aux_pkg} -f aux.list
 %doc aux.list
 %endif
-
