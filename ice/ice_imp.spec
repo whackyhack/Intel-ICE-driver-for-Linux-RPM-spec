@@ -477,7 +477,7 @@ if which dracut >/dev/null 2>&1; then
 	fi
 elif which mkinitrd >/dev/null 2>&1; then
 	echo "Updating initrd-%{kernel_ver} with mkinitrd..."
-	if mkinitrd --image-version %{kernel_ver}; then
+	if mkinitrd /boot/initrd-%{kernel_ver}.img %{kernel_ver}; then
 		echo "Successfully updated initrd."
 	else
 		echo "Failed to update initrd."
